@@ -1,16 +1,19 @@
-import React from "react";
-import { PersonalDetails } from "./PersonalDetails";
-import { ContactData } from "./ContactData";
-import { Salary } from "./Salary";
+import React, { useEffect } from "react";
 import {
+  Box,
+  Button,
+  CircularProgress,
   makeStyles,
   Paper,
-  Typography,
-  Stepper,
   Step,
   StepLabel,
-  Button,
+  Stepper,
+  Typography,
 } from "@material-ui/core";
+import { Form, Formik } from "formik";
+import { getStepComponent } from "./components/steps/helpers/get-step-component";
+import { validateStep } from "./components/steps/helpers/validation";
+import { initialValues } from "./components/steps/helpers/initialValues";
 
 const useStyles = makeStyles((theme) => ({
   layout: {
@@ -46,83 +49,111 @@ const useStyles = makeStyles((theme) => ({
   },
 }));
 
-const steps = ["Personal detail", "Contacts", "Appartmens", "Review"];
-
-function getStepContent(step: number) {
-  switch (step) {
-    case 0:
-      return <PersonalDetails />;
-    case 1:
-      return <ContactData />;
-    case 2:
-      return <Salary />;
-    case 3:
-      return <div>Review your order</div>;
-    default:
-      throw new Error("Unknown step");
-  }
-}
+const steps = ["Personal detail", "Contacts", "Apartments", "Review"];
 
 function App() {
   const classes = useStyles();
-
-  const handleNext = () => {
-    setActiveStep(activeStep + 1);
-  };
-
-  const handleBack = () => {
-    setActiveStep(activeStep - 1);
-  };
-
   const [activeStep, setActiveStep] = React.useState(0);
+  const [isSubmitted, setIsSubmitted] = React.useState(false);
+  const [isSubmitting, setIsSubmitting] = React.useState(false);
+  const [isLoading, setIsLoading] = React.useState(false);
+
+  // Imitating server requests.
+  // For real-world case reducer is a better option.
+  useEffect(() => {
+    if (isSubmitting) {
+      setIsLoading(true);
+      setTimeout(() => {
+        setIsSubmitting(false);
+        setIsLoading(false);
+        setIsSubmitted(true);
+      }, 2000);
+    }
+  }, [isSubmitting]);
+
+  const handleSubmit = () => {
+    if (activeStep === 3) {
+      setIsSubmitting(true);
+    } else {
+      setActiveStep((step) => step + 1);
+    }
+  };
 
   return (
-    <main className={classes.layout}>
-      <Paper className={classes.paper} elevation={1}>
-        <Typography component="h1" variant="h4" align="center">
-          New user
-        </Typography>
-        <Stepper activeStep={activeStep}>
-          {steps.map((label) => (
-            <Step key={label}>
-              <StepLabel>{label}</StepLabel>
-            </Step>
-          ))}
-        </Stepper>
+    <Formik
+      enableReinitialize
+      initialValues={{ ...initialValues }}
+      onSubmit={handleSubmit}
+      validate={validateStep(steps[activeStep])}
+    >
+      {({ values, errors, touched }) => {
+        return (
+          <main className={classes.layout}>
+            <Paper className={classes.paper} elevation={1}>
+              <Typography component="h1" variant="h4" align="center">
+                Apply for an apartment
+              </Typography>
 
-        <React.Fragment>
-          {activeStep === steps.length ? (
-            <React.Fragment>
-              <Typography variant="h5" gutterBottom>
-                Your application submitted successfully.
-              </Typography>
-              <Typography variant="subtitle1">
-                We received you details and come back to you soon.
-              </Typography>
-            </React.Fragment>
-          ) : (
-            <React.Fragment>
-              {getStepContent(activeStep)}
-              <div className={classes.buttons}>
-                {activeStep !== 0 && (
-                  <Button onClick={handleBack} className={classes.button}>
-                    Back
-                  </Button>
-                )}
-                <Button
-                  variant="contained"
-                  color="primary"
-                  onClick={handleNext}
-                  className={classes.button}
+              {isLoading ? (
+                <Box
+                  display="flex"
+                  alignItems="center"
+                  justifyContent="center"
+                  minHeight="300px"
                 >
-                  {activeStep === steps.length - 1 ? "Submit" : "Next"}
-                </Button>
-              </div>
-            </React.Fragment>
-          )}
-        </React.Fragment>
-      </Paper>
-    </main>
+                  <CircularProgress />
+                </Box>
+              ) : isSubmitted ? (
+                <Box
+                  display="flex"
+                  alignItems="center"
+                  justifyContent="center"
+                  minHeight="300px"
+                  flexDirection="column"
+                >
+                  <Typography component="h2" variant="h6" align="center">
+                    Submitted!
+                  </Typography>
+                  <Typography align="center">
+                    Your application is safe with us, and you will receive email
+                    with application details
+                  </Typography>
+                </Box>
+              ) : (
+                <React.Fragment>
+                  <Stepper activeStep={activeStep}>
+                    {steps.map((label) => (
+                      <Step key={label}>
+                        <StepLabel>{label}</StepLabel>
+                      </Step>
+                    ))}
+                  </Stepper>
+
+                  <Form>
+                    {getStepComponent({
+                      activeStep,
+                      values,
+                      errors,
+                      touched,
+                    })}
+                    <div className={classes.buttons}>
+                      <Button
+                        variant="contained"
+                        color="primary"
+                        type="submit"
+                        className={classes.button}
+                      >
+                        {activeStep === steps.length - 1 ? "Submit" : "Next"}
+                      </Button>
+                    </div>
+                  </Form>
+                </React.Fragment>
+              )}
+            </Paper>
+          </main>
+        );
+      }}
+    </Formik>
   );
 }
 
